@@ -33,7 +33,7 @@ npm run dev     # watches for changes
 npm start       # production
 ```
 
-## Endpoints (so far)
+## Endpoints
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
@@ -42,6 +42,20 @@ npm start       # production
 | POST | `/api/auth/refresh` | refresh cookie | Rotates the refresh token |
 | POST | `/api/auth/logout` | refresh cookie | Revokes this session |
 | GET | `/api/auth/me` | access cookie or `Authorization: Bearer` | Current user |
+| GET | `/api/public/content` | none | Published content for the site (visible items only). 404 until the first publish |
+| GET | `/api/admin/draft` | editor or admin | Full draft (including hidden items) and the public preview |
+| GET/POST | `/api/admin/cars` | editor or admin | List and create cars |
+| PATCH/DELETE | `/api/admin/cars/:id` | editor or admin | Edit and delete a car |
+| GET/POST | `/api/admin/faq` | editor or admin | List and create FAQ items |
+| PATCH/DELETE | `/api/admin/faq/:id` | editor or admin | Edit and delete a FAQ item |
+| GET/PUT | `/api/admin/settings` | editor or admin | Phone, WhatsApp and email |
+| GET/PUT | `/api/admin/sections` | editor or admin | Copy blocks, upserted by `key` |
+| DELETE | `/api/admin/sections/:key` | editor or admin | Delete a copy block |
+| POST | `/api/admin/publish` | admin | Snapshot the draft as a new revision (goes live). Needs at least 3 visible cars |
+| GET | `/api/admin/revisions` | editor or admin | Last 50 revisions |
+| POST | `/api/admin/revisions/:id/restore` | admin | Copy a revision into the draft. Does not publish |
+
+Drafts are the working copies. Publish creates an immutable revision, and the newest revision is what the public API serves.
 
 ## Security notes
 

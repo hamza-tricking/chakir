@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import { env } from './config/env.js';
 import { connectDb, isDbReady } from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
+import publicRoutes from './routes/public.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 
 const app = express();
@@ -22,6 +24,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/public', publicRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
