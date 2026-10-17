@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import * as c from '../controllers/content.controller.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { requireDb } from '../middleware/db.js';
@@ -28,8 +28,14 @@ router.delete('/faq/:id', editor, c.deleteFaq);
 router.get('/settings', editor, c.getSettings);
 router.put('/settings', editor, c.updateSettings);
 
-router.get('/sections', editor, c.listSections);
-router.put('/sections', editor, c.upsertSection);
-router.delete('/sections/:key', editor, c.deleteSection);
+router.get('/blocks', editor, c.listBlocks);
+router.put('/blocks/:key', editor, c.upsertBlock);
+router.delete('/blocks/:key', editor, c.deleteBlock);
+
+// Raw image bytes in the body. Only image types are parsed, anything else reaches the controller as no body.
+const imageBody = express.raw({ type: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml', 'image/x-icon'], limit: '10mb' });
+router.get('/media', editor, c.listMedia);
+router.post('/media', editor, imageBody, c.uploadMedia);
+router.delete('/media/:id', editor, c.deleteMedia);
 
 export default router;

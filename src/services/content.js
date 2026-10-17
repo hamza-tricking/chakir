@@ -1,7 +1,7 @@
 import { Car } from '../models/Car.js';
 import { FaqItem } from '../models/FaqItem.js';
 import { SiteSettings } from '../models/SiteSettings.js';
-import { Section } from '../models/Section.js';
+import { Block } from '../models/Block.js';
 import { Revision } from '../models/Revision.js';
 import { HttpError } from '../utils/errors.js';
 
@@ -23,21 +23,23 @@ export const toCarOut = (car) => ({
   topSpeed: car.topSpeed,
   price: car.price,
   powertrain: car.powertrain,
+  image: car.image || '',
+  thumb: car.thumb || '',
 });
 
 // Full draft: includes hidden items. Used by the admin editor, preview and revisions.
 export async function readDraft() {
-  const [cars, faq, settings, sections] = await Promise.all([
+  const [cars, faq, settings, blocks] = await Promise.all([
     Car.find().sort({ order: 1, name: 1 }).lean(),
     FaqItem.find().sort({ order: 1 }).lean(),
     SiteSettings.findOne({ key: SETTINGS_KEY }).lean(),
-    Section.find().sort({ key: 1 }).lean(),
+    Block.find().sort({ key: 1 }).lean(),
   ]);
   return {
     cars: cars.map((c) => ({ ...toCarOut(c), order: c.order, visible: c.visible, _id: String(c._id) })),
     faq: faq.map((f) => ({ _id: String(f._id), question: f.question, answer: f.answer, order: f.order, visible: f.visible })),
     settings: { phone: settings?.phone ?? '', whatsapp: settings?.whatsapp ?? '', email: settings?.email ?? '' },
-    sections: sections.map((s) => ({ _id: String(s._id), key: s.key, page: s.page, data: s.data, visible: s.visible })),
+    blocks: blocks.map((b) => ({ key: b.key, data: b.data })),
   };
 }
 
@@ -47,24 +49,23 @@ export function publicView(content) {
   const faq = (content.faq || [])
     .filter((f) => f.visible)
     .map(({ question, answer }) => ({ q: question, a: answer }));
-  const sections = {};
-  for (const s of content.sections || []) {
-    if (s.visible) sections[s.key] = s.data;
-  }
-  return { cars, faq, settings: content.settings, sections };
+  // Old revisions have no blocks; the site then keeps its bundled copy.
+  const blocks = {};
+  for (const b of content.blocks || []) blocks[b.key] = b.data;
+  return { cars, faq, settings: content.settings, blocks };
 }
 
 // Copies a full content snapshot into the working collections (used by restore).
 export async function replaceDraft(content) {
-  await Promise.all([Car.deleteMany({}), FaqItem.deleteMany({}), Section.deleteMany({})]);
+  await Promise.all([Car.deleteMany({}), FaqItem.deleteMany({}), Block.deleteMany({})]);
   if (content.cars?.length) {
     await Car.insertMany(content.cars.map(({ id, _id, ...c }) => ({ ...c, slug: id })));
   }
   if (content.faq?.length) {
     await FaqItem.insertMany(content.faq.map(({ _id, ...f }) => f));
   }
-  if (content.sections?.length) {
-    await Section.insertMany(content.sections.map(({ _id, ...s }) => s));
+  if (content.blocks?.length) {
+    await Block.insertMany(content.blocks.map(({ key, data }) => ({ key, data })));
   }
   await SiteSettings.updateOne({ key: SETTINGS_KEY }, { $set: content.settings ?? {} }, { upsert: true });
 }

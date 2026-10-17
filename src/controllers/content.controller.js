@@ -1,16 +1,18 @@
 import { Car } from '../models/Car.js';
 import { FaqItem } from '../models/FaqItem.js';
 import { SiteSettings } from '../models/SiteSettings.js';
-import { Section } from '../models/Section.js';
+import { Block } from '../models/Block.js';
+import { Media } from '../models/Media.js';
 import { Revision } from '../models/Revision.js';
 import {
+  blockDataSchema,
+  blockKeySchema,
   carCreateSchema,
   carUpdateSchema,
   faqCreateSchema,
   faqUpdateSchema,
   idParamSchema,
   revisionLabelSchema,
-  sectionSchema,
   settingsSchema,
 } from '../validators/content.js';
 import { parseBody } from '../utils/validate.js';
@@ -137,27 +139,78 @@ export async function updateSettings(req, res) {
   return res.json({ settings: { phone: s.phone, whatsapp: s.whatsapp, email: s.email } });
 }
 
-// ---- Sections (copy blocks keyed by name) -------------------------------
+// ---- Blocks (editable page copy and assets, keyed by name) -------------
 
-const sectionOut = (s) => ({ _id: String(s._id), key: s.key, page: s.page, data: s.data, visible: s.visible });
-
-export async function listSections(_req, res) {
-  const items = await Section.find().sort({ key: 1 }).lean();
-  return res.json({ items: items.map(sectionOut) });
+export async function listBlocks(_req, res) {
+  const items = await Block.find().sort({ key: 1 }).lean();
+  return res.json({ items: items.map((b) => ({ key: b.key, data: b.data })) });
 }
 
-export async function upsertSection(req, res) {
-  const data = parseBody(sectionSchema, req.body);
-  const s = await Section.findOneAndUpdate(
-    { key: data.key },
-    { $set: data },
+export async function upsertBlock(req, res) {
+  const key = parseBody(blockKeySchema, req.params.key);
+  const { data } = parseBody(blockDataSchema, req.body);
+  const b = await Block.findOneAndUpdate(
+    { key },
+    { $set: { data } },
     { returnDocument: 'after', upsert: true, runValidators: true },
   ).lean();
-  return res.json({ item: sectionOut(s) });
+  return res.json({ item: { key: b.key, data: b.data } });
 }
 
-export async function deleteSection(req, res) {
-  const removed = await Section.findOneAndDelete({ key: req.params.key });
-  if (!removed) throw notFound('Section');
+// Deleting a draft block makes the site fall back to its bundled copy for that block.
+export async function deleteBlock(req, res) {
+  const key = parseBody(blockKeySchema, req.params.key);
+  const removed = await Block.findOneAndDelete({ key });
+  if (!removed) throw notFound('Block');
   return res.status(204).end();
+}
+
+// ---- Media ---------------------------------------------------------------
+
+const mediaOut = (m) => ({
+  id: String(m._id),
+  name: m.name,
+  mime: m.mime,
+  size: m.size,
+  createdAt: m.createdAt,
+  url: `/api/public/media/${m._id}`,
+});
+
+export async function listMedia(_req, res) {
+  const items = await Media.find().select('-data').sort({ createdAt: -1 }).limit(500).lean();
+  return res.json({ items: items.map(mediaOut) });
+}
+
+// The image is the raw request body (see the express.raw parser on the route); the file name comes from ?name=.
+export async function uploadMedia(req, res) {
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    throw new HttpError(400, 'Send an image (png, jpeg, webp, gif, avif or svg) as the request body');
+  }
+  const mime = String(req.headers['content-type'] || '').split(';')[0].trim();
+  const name = String(req.query.name || 'upload').slice(0, 160);
+  const media = await Media.create({ name, mime, size: req.body.length, data: req.body });
+  return res.status(201).json({ item: mediaOut(media) });
+}
+
+export async function deleteMedia(req, res) {
+  const id = parseBody(idParamSchema, req.params.id);
+  const removed = await Media.findByIdAndDelete(id);
+  if (!removed) throw notFound('Media');
+  return res.status(204).end();
+}
+
+// Public: serves the file bytes. Cached for a year because a file never changes once uploaded.
+export async function getMedia(req, res) {
+  const id = parseBody(idParamSchema, req.params.id);
+  const media = await Media.findById(id);
+  if (!media) throw notFound('Media');
+  res.set({
+    'Content-Type': media.mime,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    // The site is on another origin, and helmet's default would block it from showing these images.
+    'Cross-Origin-Resource-Policy': 'cross-origin',
+    // An uploaded SVG must never run scripts if someone opens its URL directly.
+    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+  });
+  return res.send(media.data);
 }

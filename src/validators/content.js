@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { SECTION_PAGES } from '../models/Section.js';
 
 // Input schemas. No .default() here on purpose: PATCH uses .partial(), and defaults would overwrite stored values.
 const text = (max) => z.string().trim().min(1).max(max);
@@ -18,11 +17,13 @@ const carFields = {
   topSpeed: text(40),
   price: text(40),
   powertrain: text(160),
+  image: z.string().trim().max(300),
+  thumb: z.string().trim().max(300),
   order: z.number().int().min(0).max(100000),
   visible: z.boolean(),
 };
 
-export const carCreateSchema = z.object(carFields);
+export const carCreateSchema = z.object(carFields).extend({ image: carFields.image.optional(), thumb: carFields.thumb.optional() });
 export const carUpdateSchema = z.object(carFields).partial();
 
 const faqFields = {
@@ -41,12 +42,8 @@ export const settingsSchema = z.object({
   email: z.union([z.literal(''), z.email().max(200)]),
 });
 
-export const sectionSchema = z.object({
-  key: z.string().trim().min(1).max(120).regex(/^[a-z0-9._-]+$/, 'Use lowercase letters, digits, dots, dashes or underscores'),
-  page: z.enum(SECTION_PAGES),
-  data: z.record(z.string(), z.unknown()),
-  visible: z.boolean(),
-});
+export const blockKeySchema = z.string().trim().min(1).max(120).regex(/^[a-z0-9._-]+$/, 'Use lowercase letters, digits, dots, dashes or underscores');
+export const blockDataSchema = z.object({ data: z.record(z.string(), z.unknown()) });
 
 export const revisionLabelSchema = z.object({
   label: z.string().trim().max(120).default(''),

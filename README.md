@@ -42,15 +42,18 @@ npm start       # production
 | POST | `/api/auth/refresh` | refresh cookie | Rotates the refresh token |
 | POST | `/api/auth/logout` | refresh cookie | Revokes this session |
 | GET | `/api/auth/me` | access cookie or `Authorization: Bearer` | Current user |
-| GET | `/api/public/content` | none | Published content for the site (visible items only). 404 until the first publish |
+| GET | `/api/public/content` | none | Published content for the site (visible items, settings and blocks). 404 until the first publish |
+| GET | `/api/public/media/:id` | none | An uploaded image, cached for a year and readable from other origins |
 | GET | `/api/admin/draft` | editor or admin | Full draft (including hidden items) and the public preview |
 | GET/POST | `/api/admin/cars` | editor or admin | List and create cars |
 | PATCH/DELETE | `/api/admin/cars/:id` | editor or admin | Edit and delete a car |
 | GET/POST | `/api/admin/faq` | editor or admin | List and create FAQ items |
 | PATCH/DELETE | `/api/admin/faq/:id` | editor or admin | Edit and delete a FAQ item |
 | GET/PUT | `/api/admin/settings` | editor or admin | Phone, WhatsApp and email |
-| GET/PUT | `/api/admin/sections` | editor or admin | Copy blocks, upserted by `key` |
-| DELETE | `/api/admin/sections/:key` | editor or admin | Delete a copy block |
+| GET | `/api/admin/blocks` | editor or admin | Editable page copy blocks (draft) |
+| PUT/DELETE | `/api/admin/blocks/:key` | editor or admin | Save a block (`{ data }`), or delete it so the site uses its bundled copy |
+| GET/POST | `/api/admin/media` | editor or admin | List images; upload one as the raw body (`Content-Type: image/*`, `?name=`, up to 10 MB) |
+| DELETE | `/api/admin/media/:id` | editor or admin | Delete an uploaded image |
 | POST | `/api/admin/publish` | admin | Snapshot the draft as a new revision (goes live). Needs at least 3 visible cars |
 | GET | `/api/admin/revisions` | editor or admin | Last 50 revisions |
 | POST | `/api/admin/revisions/:id/restore` | admin | Copy a revision into the draft. Does not publish |

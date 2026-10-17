@@ -14,6 +14,9 @@ const carSchema = new mongoose.Schema(
     topSpeed: { type: String, required: true, trim: true },
     price: { type: String, required: true, trim: true },
     powertrain: { type: String, required: true, trim: true },
+    // Image URLs: either a site path (/cars/x.webp) or an uploaded file (/api/public/media/:id). Empty means the default.
+    image: { type: String, default: '', trim: true },
+    thumb: { type: String, default: '', trim: true },
     order: { type: Number, default: 0 },
     visible: { type: Boolean, default: true },
   },
